@@ -1076,6 +1076,8 @@ window.addEventListener('resize', () => {
 // ────────────────────────────────────────────────────────────────────────────
 //  Animation state
 // ────────────────────────────────────────────────────────────────────────────
+// Early hook for tests — populated after scene assembly
+window.__tihu = { loading: true };
 let t0 = performance.now() / 1000;
 let lastFpsUpdate = t0;
 let frameCount = 0;
