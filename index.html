@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🚴 Pelican on a Bike — A Tiny 3D Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-grad-1: #ffd6a5;
+      --bg-grad-2: #ffadad;
+      --bg-grad-3: #a0c4ff;
+      --bg-grad-4: #bdb2ff;
+      --ink: #1a1a2e;
+      --paper: rgba(255, 255, 255, 0.78);
+      --accent: #ff6b6b;
+      --accent-2: #4ecdc4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: 'Fredoka', system-ui, sans-serif;
+      color: var(--ink);
+      background: #000;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #scene-canvas {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+    }
+    #scene-canvas:active { cursor: grabbing; }
+
+    /* Top hero */
+    .hero {
+      position: fixed;
+      top: 20px; left: 20px;
+      padding: 14px 22px;
+      background: var(--paper);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+      border: 1px solid rgba(255,255,255,0.6);
+      max-width: min(420px, calc(100vw - 40px));
+      user-select: none;
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hero h1 .emoji {
+      display: inline-block;
+      animation: wobble 2.5s ease-in-out infinite;
+      transform-origin: bottom center;
+    }
+    .hero p {
+      font-size: 13px;
+      opacity: 0.75;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    @keyframes wobble {
+      0%, 100% { transform: rotate(-6deg); }
+      50% { transform: rotate(6deg); }
+    }
+
+    /* Control panel */
+    .panel {
+      position: fixed;
+      top: 20px; right: 20px;
+      padding: 14px 18px;
+      background: var(--paper);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+      border: 1px solid rgba(255,255,255,0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 200px;
+      font-size: 13px;
+    }
+    .panel h2 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 2px;
+    }
+    .panel label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-weight: 600;
+    }
+    .panel label .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel label .val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(0,0,0,0.08);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .panel input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 3px;
+      outline: none;
+    }
+    .panel input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+      border: 2px solid var(--accent);
+    }
+    .panel button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+    .panel button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(255, 107, 107, 0.5);
+    }
+    .panel button:active { transform: translateY(0); }
+    .panel button.alt {
+      background: var(--accent-2);
+      box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);
+    }
+
+    /* Stats */
+    .stats {
+      position: fixed;
+      bottom: 16px; left: 16px;
+      padding: 8px 14px;
+      background: var(--paper);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border-radius: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.5);
+      pointer-events: none;
+    }
+    .stats .k { opacity: 0.55; }
+    .stats .v { color: var(--accent); font-weight: 700; }
+
+    /* Loading screen */
+    #loader {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2), var(--bg-grad-3), var(--bg-grad-4));
+      background-size: 400% 400%;
+      animation: bgShift 8s ease infinite;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 100;
+      transition: opacity 0.8s ease;
+    }
+    #loader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    @keyframes bgShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    #loader .spinner {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent, white);
+      animation: spin 1s linear infinite;
+      mask: radial-gradient(circle, transparent 50%, black 52%);
+      -webkit-mask: radial-gradient(circle, transparent 50%, black 52%);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loader h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    #loader p {
+      font-size: 14px;
+      color: rgba(255,255,255,0.85);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Touch hint */
+    .hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 16px;
+      background: var(--paper);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.5);
+      animation: fadeUp 2s ease forwards;
+      animation-delay: 1.5s;
+      opacity: 0;
+      pointer-events: none;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .hero { top: 12px; left: 12px; padding: 10px 16px; }
+      .hero h1 { font-size: 17px; }
+      .hero p { font-size: 11px; }
+      .panel { top: 12px; right: 12px; min-width: 160px; padding: 10px 14px; }
+      .stats { bottom: 12px; left: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene-canvas"></canvas>
+
+  <div id="loader">
+    <div class="spinner"></div>
+    <h2>🐦 Pedal power…</h2>
+    <p>Assembling pelican &amp; bike</p>
+  </div>
+
+  <div class="hero">
+    <h1><span class="emoji">🐦</span> Pelican on a Bike</h1>
+    <p>A tiny 3D adventure — drag to orbit, scroll to zoom</p>
+  </div>
+
+  <div class="panel">
+    <h2>🎛 Scene Controls</h2>
+    <label>
+      <div class="row"><span>Pedal speed</span><span class="val" id="v-speed">1.0×</span></div>
+      <input id="speed" type="range" min="0" max="3" step="0.05" value="1" />
+    </label>
+    <label>
+      <div class="row"><span>Time of day</span><span class="val" id="v-time">Noon</span></div>
+      <input id="time" type="range" min="0" max="1" step="0.01" value="0.5" />
+    </label>
+    <label>
+      <div class="row"><span>Camera follow</span><span class="val" id="v-cam">Cinematic</span></div>
+      <input id="cam" type="range" min="0" max="1" step="0.01" value="0.5" />
+    </label>
+    <button id="honkBtn">🔔 Honk!</button>
+    <button id="resetBtn" class="alt">↺ Reset view</button>
+  </div>
+
+  <div class="stats">
+    <span class="k">FPS</span> <span class="v" id="fps">--</span>
+    &nbsp;·&nbsp;
+    <span class="k">distance</span> <span class="v" id="dist">0m</span>
+  </div>
+
+  <div class="hint">🖱 drag · scroll · space to honk</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./three.module.js",
+      "three/addons/": "./addons/"
+    }
+  }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
